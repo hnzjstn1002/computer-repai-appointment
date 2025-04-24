@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRAS - User Login</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { margin: 0; background: #274064; color: #001f3f; }
+    header {
+      background-color: #001f3f;
+      color: rgb(211, 211, 211);
+      padding: 20px 15px;
+      text-align: center;
+      font-size: 1.8rem;
+      border-bottom: 4px solid #ffc107;
+  
+    }
+    header img {
+      height: 150px;
+      width: 150px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .container {
+      max-width: 700px;
+      margin: 40px auto;
+      background: white;
+      padding: 100px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .form-section {
+      display: none;
+      color: black;
+    }
+    .form-section.active { display: block; }
+    input, select, textarea {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #001f3f;
+      color: white;
+      border: none;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      width: 100%;
+    }
+    button:hover { background-color: #003366; }
+    #clientNav {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      gap: 10px;
+    }
+    #clientNav button {
+      flex: 1;
+    }
+    #transactionOutput, #statusOutput {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      display: none;
+    }
+    #transactionOutput {
+      background: #e8f0fe;
+      color: #001f3f;
+      border-left: 4px solid #001f3f;
+    }
+    #statusOutput {
+      background-color: #f0f2f5;
+      color: black;
+      border-left: 5px solid #001f3f;
+    }
+    .message.success { color: green; }
+    .message.error { color: red; }
+    #rescheduleNotice {
+      background: #fff3cd;
+      border-left: 5px solid #ffc107;
+      color: #856404;
+      padding: 15px;
+      margin-top: 15px;
+      border-radius: 8px;
+      display: none;
+    }
+    .logout-btn {
+      background-color: #ff6d7c;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="CRAS Logo" width="80" height="100">
+  <div><h3>Computer Repair Appointment System</h3></div>
+</header>
+<div class="container">
+
+  <div id="loginSection" class="form-section active">
+    <h2>Select User Role and Login</h2>
+    <select id="userRole">
+      <option value="">-- Select Role --</option>
+      <option value="client">Client</option>
+      <option value="technician">MIS Technician</option>
+    </select>
+    <input type="text" id="loginUser" placeholder="Username or Email" required />
+    <input type="password" id="loginPass" placeholder="Password" required />
+    <button onclick="login()">Login</button>
+    <div id="loginMsg" class="message"></div>
+  </div>
+
+  <div id="clientNav" style="display: none;">
+    <button onclick="showSection('requestForm')">Submit Request</button>
+    <button onclick="showSection('checkStatus')">Check Status</button>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div id="requestForm" class="form-section">
+    <h2>Submit Computer Repair Request</h2>
+    <form onsubmit="return submitRequest(event)">
+      <input type="text" id="fullName" placeholder="Full Name" required />
+      <input type="text" id="position" placeholder="Position/Designation" required />
+      <input type="text" id="contact" placeholder="Contact Number" required />
+      <input type="email" id="email" placeholder="Email Address" required />
+      <input type="text" id="department" placeholder="Office/Department" required />
+      <select id="equipment" required>
+        <option value="">-- Select Equipment Type --</option>
+        <option>Desktop</option>
+        <option>Laptop</option>
+        <option>Printer</option>
+        <option>Other</option>
+      </select>
+      <textarea id="issue" placeholder="Issue Description" rows="4" required></textarea>
+      <input type="text" id="location" placeholder="Location of Equipment" required />
+      <select id="urgency" required>
+        <option value="">-- Urgency Level --</option>
+        <option>Low</option>
+        <option>Medium</option>
+        <option>High</option>
+      </select>
+      <input type="date" id="date" required />
+      <input type="time" id="time" required />
+      <textarea id="notes" placeholder="Additional Notes" rows="3"></textarea>
+      <button type="submit">Submit Request</button>
+    </form>
+    <div id="transactionOutput"></div>
+  </div>
+
+  <div id="checkStatus" class="form-section">
+    <h2>Check Repair Status</h2>
+    <input type="text" id="statusCode" placeholder="Enter Transaction Code" required />
+    <button onclick="checkStatus()">Check</button>
+    <div id="statusOutput"></div>
+    <div id="rescheduleNotice">This request has been rescheduled. Please check the new date and time above.</div>
+  </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script>
+function showSection(id) {
+  document.querySelectorAll('.form-section').forEach(section => section.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('transactionOutput').style.display = 'none';
+  document.getElementById('statusOutput').style.display = 'none';
+  document.getElementById('rescheduleNotice').style.display = 'none';
+}
+
+function login() {
+  const role = document.getElementById('userRole').value;
+  if (role === 'client') {
+    handleClientLogin();
+  } else if (role === 'technician') {
+    handleTechnicianLogin();
+  } else {
+    const msg = document.getElementById('loginMsg');
+    msg.textContent = 'Please select a valid role.';
+    msg.className = 'message error';
+  }
+}
+
+function handleClientLogin() {
+  const user = document.getElementById('loginUser').value;
+  const pass = document.getElementById('loginPass').value;
+  const msg = document.getElementById('loginMsg');
+
+  const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
+  const found = users.find(u => u.email === user && u.password === pass);
+
+  if (found) {
+    msg.textContent = 'Client login successful!';
+    msg.className = 'message success';
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('clientNav').style.display = 'flex';
+    showSection('requestForm');
+  } else if (user === 'client001' && pass === 'clientpass') {
+    msg.textContent = 'Client login successful!';
+    msg.className = 'message success';
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('clientNav').style.display = 'flex';
+    showSection('requestForm');
+  } else {
+    msg.textContent = 'Invalid client credentials';
+    msg.className = 'message error';
+  }
+}
+
+function handleTechnicianLogin() {
+  const user = document.getElementById('loginUser').value;
+  const pass = document.getElementById('loginPass').value;
+  const msg = document.getElementById('loginMsg');
+  if (user === 'tech001' && pass === 'techpass') {
+    msg.textContent = 'Technician login successful! Redirecting...';
+    msg.className = 'message success';
+    setTimeout(() => {
+      window.location.href = 'admin_dashboard.html';
+    }, 1000);
+  } else {
+    msg.textContent = 'Invalid technician credentials';
+    msg.className = 'message error';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('auto_login_user');
+  location.reload();
+}
+
+function checkStatus() {
+  const code = document.getElementById('statusCode').value.trim();
+  const output = document.getElementById('statusOutput');
+  const rescheduleNote = document.getElementById('rescheduleNotice');
+  output.style.display = 'none';
+  rescheduleNote.style.display = 'none';
+
+  if (!code) {
+    output.textContent = 'Please enter a transaction code.';
+    output.style.display = 'block';
+    return;
+  }
+
+  const data = localStorage.getItem(code);
+  if (data) {
+    const request = JSON.parse(data);
+    output.innerHTML = `<strong>Status:</strong> ${request.status || 'Pending'}<br>
+      <strong>Name:</strong> ${request.fullName}<br>
+      <strong>Issue:</strong> ${request.issue}<br>
+      <strong>Department:</strong> ${request.department || ''}<br>
+      <strong>Date:</strong> ${request.date} at ${request.time}`;
+    output.style.display = 'block';
+
+    if (request.status === 'Rescheduled') {
+      rescheduleNote.style.display = 'block';
+    }
+  } else {
+    output.textContent = 'No request found with this transaction code.';
+    output.style.display = 'block';
+  }
+}
+
+// Auto-login if admin added client user
+window.onload = function () {
+  const autoUser = JSON.parse(localStorage.getItem('auto_login_user'));
+  if (autoUser) {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('clientNav').style.display = 'flex';
+    showSection('requestForm');
+  }
+}
+</script>
+</body>
+</html>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAh-YnkSdfMdPiov5K98CJSs2uDRBLOtbA",
+    authDomain: "computer-repair-appointm-f32f5.firebaseapp.com",
+    projectId: "computer-repair-appointm-f32f5",
+    storageBucket: "computer-repair-appointm-f32f5.firebasestorage.app",
+    messagingSenderId: "27738928495",
+    appId: "1:27738928495:web:821c73371e44ebf419249a",
+    measurementId: "G-M2D7STSJBL"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>

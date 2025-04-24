@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRAS - Admin Dashboard</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #bcbdbe;
+      margin: 0;
+      padding: 0;
+      color: #001f3f;
+      
+    }
+    header {
+      background-color: #001f3f;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 1.8rem;
+      border-bottom: 4px solid #ffc107;
+    }
+    header img {
+      height: 60px;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    nav {
+      background-color: #ffffff;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      padding: 15px 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    nav button {
+      background: #001f3f;
+      color: white;
+      border: none;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 10px 18px;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    nav button:hover {
+      background-color: #003366;
+    }
+    .container {
+      padding: 30px;
+      max-width: 1000px;
+      margin: auto;
+    }
+    .request-card {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .request-card p {
+      margin: 5px 0;
+    }
+    .request-card button, .request-card select, .request-card input[type="date"], .request-card input[type="time"] {
+      margin-top: 10px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    .details {
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-left: 4px solid #001f3f;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+    .filter-section {
+      text-align: center;
+      margin: 20px auto;
+    }
+    .filter-section input {
+      padding: 8px;
+      margin: 0 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .filter-section button {
+      padding: 8px 12px;
+      border: none;
+      background-color: #198754;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .hidden { display: none; }
+    .user-form {
+      margin-bottom: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .user-form input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .user-form button {
+      padding: 8px 14px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .user-card {
+      background: #fff;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-left: 4px solid #001f3f;
+    }
+    .user-card input {
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="logo.png" alt="CRAS Logo">
+    Computer Repair Appointment System - Admin Dashboard
+  </header>
+  <nav>
+    <button onclick="filterRequests('Pending')">View Pending</button>
+    <button onclick="filterRequests('Approved')">View Active</button>
+    <button onclick="filterRequests('Completed')">View Completed</button>
+    <button onclick="filterRequests('Rescheduled')">View Rescheduled</button>
+    <button onclick="toggleSection('manageUsersSection')">Manage Users</button>
+  </nav>
+
+  <div class="filter-section">
+    <label>From: <input type="date" id="reportStart"></label>
+    <label>To: <input type="date" id="reportEnd"></label>
+    <button onclick="generateReport()">Generate Report</button>
+  </div>
+
+  <div class="container" id="requestListSection">
+    <div id="requestList"></div>
+  </div>
+
+  <div class="container hidden" id="manageUsersSection">
+    <h2>Manage Users</h2>
+    <p>Note: Users can also register on the client side if they don’t have an account.</p>
+    <div class="user-form">
+      <input type="text" id="newUserName" placeholder="Full Name">
+      <input type="email" id="newUserEmail" placeholder="Email">
+      <input type="password" id="newUserPassword" placeholder="Password">
+      <input type="text" id="newUserOffice" placeholder="Office/Department">
+      <input type="text" id="newUserPosition" placeholder="Position/Designation">
+      <button onclick="addUserAccount()">Add User</button>
+    </div>
+    <div id="userAccountList"></div>
+  </div>
+
+  <script>
+    const requestList = document.getElementById('requestList');
+
+    function loadRequests(filter = null) {
+      requestList.innerHTML = '';
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('TXN'));
+      if (keys.length === 0) {
+        requestList.innerHTML = '<p>No requests found.</p>';
+        return;
+      }
+      for (let key of keys) {
+        const data = JSON.parse(localStorage.getItem(key));
+        const status = data.status || 'Pending';
+        if (!filter || filter === status) {
+          const card = document.createElement('div');
+          card.className = 'request-card';
+          card.innerHTML = `
+            <p><strong>Transaction Code:</strong> ${key}</p>
+            <p><strong>Client Name:</strong> ${data.fullName}</p>
+            <p><strong>Issue:</strong> ${data.issue}</p>
+            <p><strong>Status:</strong> <span id="status-${key}">${status}</span></p>
+            <div class="details">
+              <p><strong>Contact:</strong> ${data.contact || 'N/A'}</p>
+              <p><strong>Email:</strong> ${data.email || 'N/A'}</p>
+              <p><strong>Department:</strong> ${data.department || 'N/A'}</p>
+              <p><strong>Location:</strong> ${data.location || 'N/A'}</p>
+              <p><strong>Urgency:</strong> ${data.urgency || 'N/A'}</p>
+              <p><strong>Preferred Date:</strong> ${data.date || 'N/A'}</p>
+              <p><strong>Preferred Time:</strong> ${data.time || 'N/A'}</p>
+              <p><strong>Notes:</strong> ${data.notes || 'None'}</p>
+            </div>
+            <select id="select-${key}">
+              <option ${status==='Pending'?'selected':''}>Pending</option>
+              <option ${status==='Approved'?'selected':''}>Approved</option>
+              <option ${status==='Rescheduled'?'selected':''}>Rescheduled</option>
+              <option ${status==='Completed'?'selected':''}>Completed</option>
+              <option ${status==='Declined'?'selected':''}>Declined</option>
+            </select>
+            <button onclick="updateStatus('${key}')">Update Status</button>
+            <div style="margin-top: 10px">
+              <label for="reschedule-date-${key}">Reschedule Date:</label>
+              <input type="date" id="reschedule-date-${key}" />
+              <label for="reschedule-time-${key}">Time:</label>
+              <input type="time" id="reschedule-time-${key}" />
+              <button onclick="reschedule('${key}')">Save Reschedule</button>
+            </div>
+          `;
+          requestList.appendChild(card);
+        }
+      }
+    }
+
+    function updateStatus(txn) {
+      const newStatus = document.getElementById(`select-${txn}`).value;
+      const request = JSON.parse(localStorage.getItem(txn));
+      request.status = newStatus;
+      localStorage.setItem(txn, JSON.stringify(request));
+      document.getElementById(`status-${txn}`).textContent = newStatus;
+      alert(`Status updated to ${newStatus}`);
+    }
+
+    function reschedule(txn) {
+      const date = document.getElementById(`reschedule-date-${txn}`).value;
+      const time = document.getElementById(`reschedule-time-${txn}`).value;
+      if (!date || !time) {
+        alert('Please provide both a date and a time to reschedule.');
+        return;
+      }
+      const request = JSON.parse(localStorage.getItem(txn));
+      request.date = date;
+      request.time = time;
+      request.status = 'Rescheduled';
+      localStorage.setItem(txn, JSON.stringify(request));
+      document.getElementById(`status-${txn}`).textContent = 'Rescheduled';
+      alert(`Request for ${request.fullName} rescheduled to ${date} at ${time}.`);
+    }
+
+    function filterRequests(status) {
+      toggleSection('requestListSection');
+      loadRequests(status);
+    }
+
+    function generateReport() {
+      const startDate = new Date(document.getElementById('reportStart').value);
+      const endDate = new Date(document.getElementById('reportEnd').value);
+      const rows = [];
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('TXN')) {
+          const data = JSON.parse(localStorage.getItem(key));
+          const preferredDate = new Date(data.date);
+          if (!isNaN(preferredDate.getTime()) && preferredDate >= startDate && preferredDate <= endDate) {
+            rows.push([
+              key,
+              data.fullName,
+              data.contact || '',
+              data.email || '',
+              data.department || '',
+              data.location || '',
+              data.issue,
+              data.urgency || '',
+              data.date || '',
+              data.time || '',
+              data.notes || '',
+              data.status || 'Pending'
+            ]);
+          }
+        }
+      }
+
+      if (rows.length === 0) {
+        alert('No records found in the selected date range.');
+        return;
+      }
+
+      let csvContent = 'Transaction Code,Full Name,Contact,Email,Department,Location,Issue,Urgency,Preferred Date,Preferred Time,Notes,Status\n';
+      rows.forEach(row => {
+        csvContent += row.map(val => '"' + val.replace(/"/g, '""') + '"').join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('download', 'repair_requests_report.csv');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function toggleSection(id) {
+      document.getElementById('requestListSection').classList.add('hidden');
+      document.getElementById('manageUsersSection').classList.add('hidden');
+      document.getElementById(id).classList.remove('hidden');
+      if (id === 'manageUsersSection') loadUserAccounts();
+    }
+
+    function addUserAccount() {
+      const name = document.getElementById('newUserName').value.trim();
+      const email = document.getElementById('newUserEmail').value.trim();
+      const password = document.getElementById('newUserPassword').value.trim();
+      const office = document.getElementById('newUserOffice').value.trim();
+      const position = document.getElementById('newUserPosition').value.trim();
+
+      if (!name || !email || !password) {
+        alert("All fields are required.");
+        return;
+      }
+
+      const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
+      if (users.some(u => u.email === email)) {
+        alert("A user with this email already exists.");
+        return;
+      }
+
+      users.push({ name, email, password, office, position });
+      localStorage.setItem('user_accounts', JSON.stringify(users));
+      document.querySelectorAll('.user-form input').forEach(i => i.value = '');
+      loadUserAccounts();
+    }
+
+    function loadUserAccounts() {
+      const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
+      const container = document.getElementById('userAccountList');
+      container.innerHTML = '';
+      users.forEach((user, index) => {
+        const div = document.createElement('div');
+        div.className = 'user-card';
+        div.innerHTML = `
+          <p><strong>${user.name}</strong> (${user.email})</p>
+          <p>Office/Dept: ${user.office || 'N/A'} | Position: ${user.position || 'N/A'}</p>
+          <button onclick="editUserAccount(${index})">Edit</button>
+          <button onclick="deleteUserAccount(${index})">Delete</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function editUserAccount(index) {
+      const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
+      const user = users[index];
+      const container = document.getElementById('userAccountList');
+      const div = document.createElement('div');
+      div.className = 'user-card';
+      div.innerHTML = `
+        <input type="text" id="editName-${index}" value="${user.name}">
+        <input type="email" id="editEmail-${index}" value="${user.email}">
+        <input type="password" id="editPassword-${index}" placeholder="New Password">
+        <input type="text" id="editOffice-${index}" value="${user.office || ''}">
+        <input type="text" id="editPosition-${index}" value="${user.position || ''}">
+        <button onclick="updateUserAccount(${index})">Update</button>
+      `;
+      container.replaceChild(div, container.children[index]);
+    }
+
+    function updateUserAccount(index) {
+      const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
+      users[index].name = document.getElementById(`editName-${index}`).value.trim();
+      users[index].email = document.getElementById(`editEmail-${index}`).value.trim();
+      const newPassword = document.getElementById(`editPassword-${index}`).value.trim();
+      if (newPassword) users[index].password = newPassword;
+      users[index].office = document.getElementById(`editOffice-${index}`).value.trim();
+      users[index].position = document.getElementById(`editPosition-${index}`).value.trim();
+
+      localStorage.setItem('user_accounts', JSON.stringify(users));
+      loadUserAccounts();
+    }
+
+    function deleteUserAccount(index) {
+      const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
+      users.splice(index, 1);
+      localStorage.setItem('user_accounts', JSON.stringify(users));
+      loadUserAccounts();
+    }
+
+    loadRequests();
+  </script>
+</body>
+</html>
