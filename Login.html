@@ -134,7 +134,7 @@
   <div id="clientNav" style="display: none;">
     <button onclick="showSection('requestForm')">Submit Request</button>
     <button onclick="showSection('checkStatus')">Check Status</button>
-    <button onclick="showSection('calendarView')">View Calendar</button>
+    <button onclick="logout()">Logout</button>
   </div>
 
   <div id="requestForm" class="form-section">
@@ -275,59 +275,40 @@ function submitRequest(event) {
 function checkStatus() {
   const code = document.getElementById('statusCode').value.trim();
   const output = document.getElementById('statusOutput');
-  const rescheduleNote = document.getElementById('rescheduleNotice');
-  output.style.display = 'none';
-  rescheduleNote.style.display = 'none';
-
-  if (!code) {
-    output.textContent = 'Please enter a transaction code.';
-    output.style.display = 'block';
-    return;
-  }
+  const rescheduleNotice = document.getElementById('rescheduleNotice');
 
   const data = localStorage.getItem(code);
+
   if (data) {
-    const request = JSON.parse(data);
-    output.innerHTML = `<strong>Status:</strong> ${request.status || 'Pending'}<br>
-      <strong>Name:</strong> ${request.fullName}<br>
-      <strong>Issue:</strong> ${request.issue}<br>
-      <strong>Department:</strong> ${request.department}<br>
-      <strong>Date:</strong> ${request.date} at ${request.time}`;
+    const requestData = JSON.parse(data);
+    output.innerHTML = `
+      <strong>Request Details:</strong><br>
+      Full Name: ${requestData.fullName}<br>
+      Department: ${requestData.department}<br>
+      Equipment: ${requestData.equipment}<br>
+      Issue: ${requestData.issue}<br>
+      Urgency: ${requestData.urgency}<br>
+      Scheduled Date: ${requestData.date} at ${requestData.time}<br>
+      Status: <strong>${requestData.status}</strong>
+    `;
     output.style.display = 'block';
 
-    if (request.status === 'Rescheduled') {
-      rescheduleNote.style.display = 'block';
+    if (requestData.status === "Rescheduled") {
+      rescheduleNotice.style.display = 'block';
+    } else {
+      rescheduleNotice.style.display = 'none';
     }
   } else {
-    output.textContent = 'No request found with this transaction code.';
+    output.innerHTML = `<span class="message error">Transaction code not found. Please try again.</span>`;
     output.style.display = 'block';
+    rescheduleNotice.style.display = 'none';
   }
 }
 
-// FullCalendar Init
-window.addEventListener('DOMContentLoaded', () => {
-  const calendarEl = document.getElementById('calendar');
-  const calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,timeGridWeek,timeGridDay'
-    },
-    events: Object.keys(localStorage)
-      .filter(k => k.startsWith('TXN'))
-      .map(k => {
-        const d = JSON.parse(localStorage.getItem(k));
-        return {
-          title: d.fullName + ' - ' + d.issue,
-          start: d.date + 'T' + d.time,
-          backgroundColor: d.status === 'Completed' ? '#28a745' : d.status === 'Rescheduled' ? '#ffc107' : '#007bff',
-          borderColor: '#001f3f'
-        };
-      })
-  });
-  calendar.render();
-});
+function logout() {
+  location.reload();
+}
 </script>
+
 </body>
 </html>
