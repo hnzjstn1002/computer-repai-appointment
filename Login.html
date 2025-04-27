@@ -7,24 +7,22 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
   <style>
     * { box-sizing: border-box; font-family: Arial, sans-serif; }
-    body { margin: 0; background: #274064; color: #001f3f; }
+    body { margin: 0; background: #f4f6f9; color: #001f3f; }
     header {
       background-color: #001f3f;
-      color: rgb(211, 211, 211);
+      color: white;
       padding: 20px 15px;
       text-align: center;
       font-size: 1.8rem;
       border-bottom: 4px solid #ffc107;
-  
     }
     header img {
-      height: 150px;
-      width: 150px;
+      height: 70px;
       margin-right: 10px;
       vertical-align: middle;
     }
     .container {
-      max-width: 700px;
+      max-width: 900px;
       margin: 40px auto;
       background: white;
       padding: 100px;
@@ -92,8 +90,17 @@
       border-radius: 8px;
       display: none;
     }
+    #calendarContainer {
+      display: flex;
+      justify-content: center;
+      margin-top: 50px;
+    }
+    #calendar {
+      width: 100%;
+      max-width: 900px;
+    }
     .logout-btn {
-      background-color: #ff6d7c;
+      background-color: #dc3545;
       color: white;
       border: none;
       padding: 10px;
@@ -106,8 +113,8 @@
 </head>
 <body>
 <header>
-  <img src="logo.png" alt="CRAS Logo" width="80" height="100">
-  <div><h3>Computer Repair Appointment System</h3></div>
+  <img src="logo.png" alt="CRAS Logo">
+  <div>Computer Repair Appointment System</div>
 </header>
 <div class="container">
 
@@ -127,7 +134,7 @@
   <div id="clientNav" style="display: none;">
     <button onclick="showSection('requestForm')">Submit Request</button>
     <button onclick="showSection('checkStatus')">Check Status</button>
-    <button class="logout-btn" onclick="logout()">Logout</button>
+    <button onclick="showSection('calendarView')">View Calendar</button>
   </div>
 
   <div id="requestForm" class="form-section">
@@ -169,7 +176,13 @@
     <div id="rescheduleNotice">This request has been rescheduled. Please check the new date and time above.</div>
   </div>
 
+  <div id="calendarView" class="form-section">
+    <h2>Technician Schedule</h2>
+    <div id="calendar"></div>
+  </div>
+
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script>
 function showSection(id) {
@@ -197,17 +210,7 @@ function handleClientLogin() {
   const user = document.getElementById('loginUser').value;
   const pass = document.getElementById('loginPass').value;
   const msg = document.getElementById('loginMsg');
-
-  const users = JSON.parse(localStorage.getItem('user_accounts') || '[]');
-  const found = users.find(u => u.email === user && u.password === pass);
-
-  if (found) {
-    msg.textContent = 'Client login successful!';
-    msg.className = 'message success';
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('clientNav').style.display = 'flex';
-    showSection('requestForm');
-  } else if (user === 'client001' && pass === 'clientpass') {
+  if (user === 'client001' && pass === 'clientpass') {
     msg.textContent = 'Client login successful!';
     msg.className = 'message success';
     document.getElementById('loginSection').style.display = 'none';
@@ -227,7 +230,7 @@ function handleTechnicianLogin() {
     msg.textContent = 'Technician login successful! Redirecting...';
     msg.className = 'message success';
     setTimeout(() => {
-      window.location.href = 'Admin_Dashboard.html';
+      window.location.href = 'admin_dashboard.html';
     }, 1000);
   } else {
     msg.textContent = 'Invalid technician credentials';
@@ -235,9 +238,38 @@ function handleTechnicianLogin() {
   }
 }
 
-function logout() {
-  localStorage.removeItem('auto_login_user');
-  location.reload();
+function submitRequest(event) {
+  event.preventDefault();
+
+  const fullName = document.getElementById('fullName').value.trim();
+  const position = document.getElementById('position').value.trim();
+  const contact = document.getElementById('contact').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const department = document.getElementById('department').value.trim();
+  const equipment = document.getElementById('equipment').value;
+  const issue = document.getElementById('issue').value.trim();
+  const location = document.getElementById('location').value.trim();
+  const urgency = document.getElementById('urgency').value;
+  const date = document.getElementById('date').value;
+  const time = document.getElementById('time').value;
+  const notes = document.getElementById('notes').value.trim();
+
+  const transactionCode = "TXN" + Date.now();
+
+  const requestData = {
+    fullName, position, contact, email, department,
+    equipment, issue, location, urgency, date, time, notes,
+    status: "Pending"
+  };
+
+  localStorage.setItem(transactionCode, JSON.stringify(requestData));
+
+  const output = document.getElementById('transactionOutput');
+  output.innerHTML = `<strong>Request submitted!</strong><br>Your transaction code is: <code>${transactionCode}</code><br><small>Use this to check your status.</small>`;
+  output.style.display = 'block';
+
+  document.querySelector('#requestForm form').reset();
+  return false;
 }
 
 function checkStatus() {
@@ -259,7 +291,7 @@ function checkStatus() {
     output.innerHTML = `<strong>Status:</strong> ${request.status || 'Pending'}<br>
       <strong>Name:</strong> ${request.fullName}<br>
       <strong>Issue:</strong> ${request.issue}<br>
-      <strong>Department:</strong> ${request.department || ''}<br>
+      <strong>Department:</strong> ${request.department}<br>
       <strong>Date:</strong> ${request.date} at ${request.time}`;
     output.style.display = 'block';
 
@@ -272,38 +304,30 @@ function checkStatus() {
   }
 }
 
-// Auto-login if admin added client user
-window.onload = function () {
-  const autoUser = JSON.parse(localStorage.getItem('auto_login_user'));
-  if (autoUser) {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('clientNav').style.display = 'flex';
-    showSection('requestForm');
-  }
-}
+// FullCalendar Init
+window.addEventListener('DOMContentLoaded', () => {
+  const calendarEl = document.getElementById('calendar');
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    events: Object.keys(localStorage)
+      .filter(k => k.startsWith('TXN'))
+      .map(k => {
+        const d = JSON.parse(localStorage.getItem(k));
+        return {
+          title: d.fullName + ' - ' + d.issue,
+          start: d.date + 'T' + d.time,
+          backgroundColor: d.status === 'Completed' ? '#28a745' : d.status === 'Rescheduled' ? '#ffc107' : '#007bff',
+          borderColor: '#001f3f'
+        };
+      })
+  });
+  calendar.render();
+});
 </script>
 </body>
 </html>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAh-YnkSdfMdPiov5K98CJSs2uDRBLOtbA",
-    authDomain: "computer-repair-appointm-f32f5.firebaseapp.com",
-    projectId: "computer-repair-appointm-f32f5",
-    storageBucket: "computer-repair-appointm-f32f5.firebasestorage.app",
-    messagingSenderId: "27738928495",
-    appId: "1:27738928495:web:821c73371e44ebf419249a",
-    measurementId: "G-M2D7STSJBL"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
